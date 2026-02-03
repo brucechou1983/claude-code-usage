@@ -1,4 +1,4 @@
-# Claude Code Usage
+<h1><img src="logo.png" width="32" alt=""> Claude Code Usage</h1>
 
 A macOS menu bar app that displays your Claude Code CLI usage statistics.
 
