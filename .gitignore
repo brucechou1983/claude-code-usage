@@ -3,4 +3,5 @@ __pycache__/
 *.pyc
 config.json
 *.app/
+*.zip
 .DS_Store

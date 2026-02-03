@@ -3,6 +3,8 @@
 
 import os
 import stat
+import shutil
+import subprocess
 from pathlib import Path
 
 APP_DIR = Path(__file__).parent.resolve()
@@ -15,15 +17,51 @@ CONTENTS = APP_BUNDLE / "Contents"
 MACOS = CONTENTS / "MacOS"
 RESOURCES = CONTENTS / "Resources"
 
+def create_icns(png_path, icns_path):
+    """Convert PNG to ICNS format."""
+    iconset_path = png_path.parent / "AppIcon.iconset"
+    iconset_path.mkdir(exist_ok=True)
+
+    # Icon sizes needed for macOS
+    sizes = [16, 32, 64, 128, 256, 512]
+    for size in sizes:
+        # Standard resolution
+        out_file = iconset_path / f"icon_{size}x{size}.png"
+        subprocess.run([
+            "sips", "-z", str(size), str(size),
+            str(png_path), "--out", str(out_file)
+        ], capture_output=True)
+        # Retina resolution
+        retina_size = size * 2
+        if retina_size <= 1024:
+            out_file = iconset_path / f"icon_{size}x{size}@2x.png"
+            subprocess.run([
+                "sips", "-z", str(retina_size), str(retina_size),
+                str(png_path), "--out", str(out_file)
+            ], capture_output=True)
+
+    # Convert iconset to icns
+    subprocess.run(["iconutil", "-c", "icns", str(iconset_path), "-o", str(icns_path)])
+
+    # Cleanup iconset
+    shutil.rmtree(iconset_path)
+
+
 def create_bundle():
     # Clean existing
     if APP_BUNDLE.exists():
-        import shutil
         shutil.rmtree(APP_BUNDLE)
 
     # Create directories
     MACOS.mkdir(parents=True)
     RESOURCES.mkdir(parents=True)
+
+    # Create app icon
+    logo_path = APP_DIR / "logo.png"
+    if logo_path.exists():
+        icns_path = RESOURCES / "AppIcon.icns"
+        create_icns(logo_path, icns_path)
+        print("Created app icon")
 
     # Create Info.plist
     info_plist = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -37,9 +75,9 @@ def create_bundle():
     <key>CFBundleIdentifier</key>
     <string>{BUNDLE_ID}</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>0.1.1</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>0.1.1</string>
     <key>CFBundleExecutable</key>
     <string>launcher</string>
     <key>CFBundlePackageType</key>
@@ -52,6 +90,8 @@ def create_bundle():
     <true/>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.utilities</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
 </dict>
 </plist>
 """

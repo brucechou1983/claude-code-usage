@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.1 (2026-02-03)
+
+### Added
+
+- **About dialog** - Shows version, author info, and license
+- **App icon** - Custom logo for the app bundle
+- **Cache prevention** - Added no-cache headers to API requests
+
 ## v0.1.0 (2026-02-03)
 
 Initial release of Claude Code Usage Inspector.

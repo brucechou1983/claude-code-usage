@@ -94,6 +94,7 @@ class UsageInspectorApp(rumps.App):
             rumps.MenuItem("Refresh Now", callback=self.refresh_now),
             rumps.MenuItem("Set OAuth Token...", callback=self.set_token),
             None,
+            rumps.MenuItem("About", callback=self.show_about),
             rumps.MenuItem("Quit", callback=rumps.quit_application),
         ]
 
@@ -140,6 +141,20 @@ class UsageInspectorApp(rumps.App):
         """Manual refresh."""
         Thread(target=self.fetch_usage, args=(None,), daemon=True).start()
 
+    def show_about(self, _):
+        """Show about dialog."""
+        rumps.alert(
+            title="Claude Code Usage Inspector",
+            message=(
+                "Version 0.1.1\n\n"
+                "Author: Bruce Chou (and Claude Code)\n"
+                "Email: brucechou1983@gmail.com\n"
+                "GitHub: github.com/brucechou1983\n\n"
+                "License: MIT"
+            ),
+            ok="OK"
+        )
+
     def fetch_usage(self, _):
         """Fetch usage data from API."""
         if not self.token:
@@ -160,6 +175,8 @@ class UsageInspectorApp(rumps.App):
                 "Content-Type": "application/json",
                 "anthropic-version": "2023-06-01",
                 "anthropic-beta": "oauth-2025-04-20",
+                "Cache-Control": "no-cache, no-store",
+                "Pragma": "no-cache",
             }
 
             req = urllib.request.Request(url, data=body, headers=headers, method="POST")
