@@ -1,4 +1,4 @@
-# Claude Code Usage Inspector
+# Claude Code Usage
 
 A macOS menu bar app that displays your Claude Code CLI usage statistics.
 
