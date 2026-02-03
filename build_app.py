@@ -37,9 +37,9 @@ def create_bundle():
     <key>CFBundleIdentifier</key>
     <string>{BUNDLE_ID}</string>
     <key>CFBundleVersion</key>
-    <string>1.0.0</string>
+    <string>0.1.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>0.1.0</string>
     <key>CFBundleExecutable</key>
     <string>launcher</string>
     <key>CFBundlePackageType</key>
