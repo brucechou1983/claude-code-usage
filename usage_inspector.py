@@ -63,6 +63,10 @@ import rumps
 import urllib.request
 from datetime import datetime, timedelta
 from threading import Thread
+from AppKit import (
+    NSAlert, NSTextField, NSSecureTextField, NSView,
+    NSMakeRect, NSAlertFirstButtonReturn, NSFont
+)
 
 class UsageInspectorApp(rumps.App):
     def __init__(self):
@@ -70,6 +74,7 @@ class UsageInspectorApp(rumps.App):
 
         self.config = self.load_config()
         self.token = self.config.get("oauth_token", "")
+        self.refresh_interval = self.config.get("refresh_interval", 300)
 
         # Menu items
         self.session_item = rumps.MenuItem("Session (5h): --")
@@ -92,14 +97,14 @@ class UsageInspectorApp(rumps.App):
             self.next_update_item,
             None,
             rumps.MenuItem("Refresh Now", callback=self.refresh_now),
-            rumps.MenuItem("Set OAuth Token...", callback=self.set_token),
+            rumps.MenuItem("Settings...", callback=self.show_settings),
             None,
             rumps.MenuItem("About", callback=self.show_about),
             rumps.MenuItem("Quit", callback=rumps.quit_application),
         ]
 
-        # Start timer (5 minutes)
-        self.timer = rumps.Timer(self.fetch_usage, 300)
+        # Start timer
+        self.timer = rumps.Timer(self.fetch_usage, self.refresh_interval)
         self.timer.start()
 
         # Initial fetch
@@ -120,21 +125,71 @@ class UsageInspectorApp(rumps.App):
     def save_config(self):
         CONFIG_FILE.write_text(json.dumps(self.config, indent=2))
 
-    def set_token(self, _):
-        """Prompt user to set OAuth token."""
-        window = rumps.Window(
-            message="Enter your Claude Code OAuth token:\n(starts with sk-ant-oat01-...)",
-            title="Set OAuth Token",
-            default_text=self.token,
-            ok="Save",
-            cancel="Cancel",
-            dimensions=(400, 100)
-        )
-        response = window.run()
-        if response.clicked:
-            self.token = response.text.strip()
+    def show_settings(self, _):
+        """Show settings dialog with multiple fields."""
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("Settings")
+        alert.setInformativeText_("Configure your Claude Code Usage Inspector")
+        alert.addButtonWithTitle_("Save")
+        alert.addButtonWithTitle_("Cancel")
+
+        # Create accessory view with fields
+        view = NSView.alloc().initWithFrame_(NSMakeRect(0, 0, 400, 80))
+
+        # OAuth token label and field
+        token_label = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 55, 120, 20))
+        token_label.setStringValue_("OAuth Token:")
+        token_label.setBezeled_(False)
+        token_label.setDrawsBackground_(False)
+        token_label.setEditable_(False)
+        token_label.setSelectable_(False)
+        view.addSubview_(token_label)
+
+        token_field = NSTextField.alloc().initWithFrame_(NSMakeRect(125, 52, 270, 24))
+        token_field.setStringValue_(self.token)
+        token_field.setPlaceholderString_("sk-ant-oat01-...")
+        token_field.setFont_(NSFont.systemFontOfSize_(12))
+        view.addSubview_(token_field)
+
+        # Refresh interval label and field
+        interval_label = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 20, 120, 20))
+        interval_label.setStringValue_("Refresh (sec):")
+        interval_label.setBezeled_(False)
+        interval_label.setDrawsBackground_(False)
+        interval_label.setEditable_(False)
+        interval_label.setSelectable_(False)
+        view.addSubview_(interval_label)
+
+        interval_field = NSTextField.alloc().initWithFrame_(NSMakeRect(125, 17, 80, 24))
+        interval_field.setStringValue_(str(self.refresh_interval))
+        interval_field.setPlaceholderString_("300")
+        interval_field.setFont_(NSFont.systemFontOfSize_(12))
+        view.addSubview_(interval_field)
+
+        alert.setAccessoryView_(view)
+
+        # Show dialog
+        response = alert.runModal()
+        if response == NSAlertFirstButtonReturn:
+            new_token = token_field.stringValue().strip()
+            try:
+                new_interval = int(interval_field.stringValue().strip())
+                if new_interval < 10:
+                    new_interval = 10  # Minimum 10 seconds
+            except ValueError:
+                new_interval = 300
+
+            self.token = new_token
+            self.refresh_interval = new_interval
             self.config["oauth_token"] = self.token
+            self.config["refresh_interval"] = self.refresh_interval
             self.save_config()
+
+            # Restart timer with new interval
+            self.timer.stop()
+            self.timer = rumps.Timer(self.fetch_usage, self.refresh_interval)
+            self.timer.start()
+
             self.refresh_now(None)
 
     def refresh_now(self, _):
@@ -146,7 +201,7 @@ class UsageInspectorApp(rumps.App):
         rumps.alert(
             title="Claude Code Usage Inspector",
             message=(
-                "Version 0.1.1\n\n"
+                "Version 0.1.2\n\n"
                 "Author: Bruce Chou (and Claude Code)\n"
                 "Email: brucechou1983@gmail.com\n"
                 "GitHub: github.com/brucechou1983\n\n"
@@ -200,7 +255,7 @@ class UsageInspectorApp(rumps.App):
                 self.status_item.title = f"Status: {status}"
                 now = datetime.now()
                 self.last_update_item.title = f"Last update: {now.strftime('%H:%M:%S')}"
-                next_update = now + timedelta(minutes=5)
+                next_update = now + timedelta(seconds=self.refresh_interval)
                 self.next_update_item.title = f"Next update: {next_update.strftime('%H:%M:%S')}"
 
                 # Update title icon based on usage (session | weekly)

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.2 (2026-02-03)
+
+### Added
+
+- **Settings dialog** - Combined OAuth token and refresh interval on single page
+- **Configurable refresh interval** - Set custom update frequency (in seconds)
+
+### Fixed
+
+- **App icon generation** - Properly handle non-square logos
+
 ## v0.1.1 (2026-02-03)
 
 ### Added

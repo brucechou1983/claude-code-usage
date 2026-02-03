@@ -22,14 +22,21 @@ def create_icns(png_path, icns_path):
     iconset_path = png_path.parent / "AppIcon.iconset"
     iconset_path.mkdir(exist_ok=True)
 
+    # First create a square 1024x1024 base image
+    square_path = png_path.parent / "icon_square.png"
+    subprocess.run([
+        "sips", "-Z", "1024", "--padToHeightWidth", "1024", "1024",
+        str(png_path), "--out", str(square_path)
+    ], capture_output=True)
+
     # Icon sizes needed for macOS
-    sizes = [16, 32, 64, 128, 256, 512]
+    sizes = [16, 32, 128, 256, 512]
     for size in sizes:
         # Standard resolution
         out_file = iconset_path / f"icon_{size}x{size}.png"
         subprocess.run([
             "sips", "-z", str(size), str(size),
-            str(png_path), "--out", str(out_file)
+            str(square_path), "--out", str(out_file)
         ], capture_output=True)
         # Retina resolution
         retina_size = size * 2
@@ -37,11 +44,15 @@ def create_icns(png_path, icns_path):
             out_file = iconset_path / f"icon_{size}x{size}@2x.png"
             subprocess.run([
                 "sips", "-z", str(retina_size), str(retina_size),
-                str(png_path), "--out", str(out_file)
+                str(square_path), "--out", str(out_file)
             ], capture_output=True)
 
     # Convert iconset to icns
     subprocess.run(["iconutil", "-c", "icns", str(iconset_path), "-o", str(icns_path)])
+
+    # Cleanup
+    if square_path.exists():
+        square_path.unlink()
 
     # Cleanup iconset
     shutil.rmtree(iconset_path)
@@ -75,9 +86,9 @@ def create_bundle():
     <key>CFBundleIdentifier</key>
     <string>{BUNDLE_ID}</string>
     <key>CFBundleVersion</key>
-    <string>0.1.1</string>
+    <string>0.1.2</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.1</string>
+    <string>0.1.2</string>
     <key>CFBundleExecutable</key>
     <string>launcher</string>
     <key>CFBundlePackageType</key>
