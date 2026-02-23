@@ -294,11 +294,15 @@ class UsageInspectorApp(rumps.App):
             if diff.total_seconds() < 0:
                 return "just reset"
 
-            hours, remainder = divmod(int(diff.total_seconds()), 3600)
+            total_seconds = int(diff.total_seconds())
+            days, day_remainder = divmod(total_seconds, 86400)
+            hours, remainder = divmod(day_remainder, 3600)
             minutes = remainder // 60
 
             time_str = reset_time.strftime("%I:%M %p")
-            if hours > 0:
+            if days > 0:
+                return f"{time_str} ({days}d {hours}h {minutes}m)"
+            elif hours > 0:
                 return f"{time_str} ({hours}h {minutes}m)"
             return f"{time_str} ({minutes}m)"
         except:
