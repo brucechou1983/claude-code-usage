@@ -300,7 +300,7 @@ class UsageInspectorApp(rumps.App):
         rumps.alert(
             title="Claude Code Usage Inspector",
             message=(
-                "Version 0.1.2\n\n"
+                "Version 0.2.0\n\n"
                 "Author: Bruce Chou (and Claude Code)\n"
                 "Email: brucechou1983@gmail.com\n"
                 "GitHub: github.com/brucechou1983\n\n"
