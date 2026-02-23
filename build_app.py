@@ -130,7 +130,7 @@ if [ ! -f "$PYTHON" ]; then
     # Create venv
     cd "$APP_DIR"
     uv venv "$VENV_DIR"
-    VIRTUAL_ENV="$VENV_DIR" uv pip install rumps pyobjc-framework-Cocoa
+    VIRTUAL_ENV="$VENV_DIR" uv pip install rumps pyobjc-framework-Cocoa Pillow
 fi
 
 # Run the app
