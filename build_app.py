@@ -86,9 +86,9 @@ def create_bundle():
     <key>CFBundleIdentifier</key>
     <string>{BUNDLE_ID}</string>
     <key>CFBundleVersion</key>
-    <string>0.2.0</string>
+    <string>0.2.1</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.2.0</string>
+    <string>0.2.1</string>
     <key>CFBundleExecutable</key>
     <string>launcher</string>
     <key>CFBundlePackageType</key>
@@ -114,7 +114,7 @@ def create_bundle():
 # This script sets up the environment and runs the menu bar app
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+APP_DIR="$(cd "$SCRIPT_DIR/../Resources" && pwd)"
 VENV_DIR="$APP_DIR/.venv"
 PYTHON="$VENV_DIR/bin/python"
 MAIN_SCRIPT="$APP_DIR/usage_inspector.py"
@@ -158,6 +158,9 @@ fi
     launcher_path = MACOS / "launcher"
     launcher_path.write_text(launcher_script)
     launcher_path.chmod(launcher_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    # Copy main script into bundle
+    shutil.copy2(APP_DIR / "usage_inspector.py", RESOURCES / "usage_inspector.py")
 
     print(f"Created: {APP_BUNDLE}")
     print(f"\nTo run: open '{APP_BUNDLE}'")
