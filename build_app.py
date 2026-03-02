@@ -114,7 +114,7 @@ def create_bundle():
 # This script sets up the environment and runs the menu bar app
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_DIR="{APP_DIR}"
+APP_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 VENV_DIR="$APP_DIR/.venv"
 PYTHON="$VENV_DIR/bin/python"
 MAIN_SCRIPT="$APP_DIR/usage_inspector.py"
@@ -137,12 +137,23 @@ if [ ! -f "$PYTHON" ]; then
 
     # Create venv
     cd "$APP_DIR"
-    "$UV" venv "$VENV_DIR"
-    VIRTUAL_ENV="$VENV_DIR" "$UV" pip install rumps pyobjc-framework-Cocoa Pillow
+    LOG="$APP_DIR/.setup.log"
+    if ! "$UV" venv "$VENV_DIR" >>"$LOG" 2>&1; then
+        osascript -e 'display dialog "Failed to create virtual environment.\\n\\nSee .setup.log for details." buttons {{"OK"}} default button "OK" with icon stop with title "Usage Inspector"'
+        exit 1
+    fi
+    if ! VIRTUAL_ENV="$VENV_DIR" "$UV" pip install rumps pyobjc-framework-Cocoa Pillow >>"$LOG" 2>&1; then
+        osascript -e 'display dialog "Failed to install dependencies.\\n\\nSee .setup.log for details." buttons {{"OK"}} default button "OK" with icon stop with title "Usage Inspector"'
+        exit 1
+    fi
 fi
 
-# Run the app
-exec "$PYTHON" "$MAIN_SCRIPT"
+# Run the app (don't exec — stay alive so we can catch crashes)
+"$PYTHON" "$MAIN_SCRIPT" 2>"$APP_DIR/.run.log"
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
+    osascript -e 'display dialog "Usage Inspector crashed on startup.\\n\\nSee .run.log for details." buttons {{"OK"}} default button "OK" with icon stop with title "Usage Inspector"'
+fi
 """
     launcher_path = MACOS / "launcher"
     launcher_path.write_text(launcher_script)
