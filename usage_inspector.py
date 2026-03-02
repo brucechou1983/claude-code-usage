@@ -16,6 +16,35 @@ APP_DIR = Path(__file__).parent.resolve()
 VENV_DIR = APP_DIR / ".venv"
 CONFIG_FILE = APP_DIR / "config.json"
 PYTHON = VENV_DIR / "bin" / "python"
+UV = None  # resolved lazily by find_uv()
+
+def find_uv():
+    """Find the uv binary, checking common install locations beyond PATH.
+
+    When launched as a macOS .app bundle (Finder, Login Items), the process
+    inherits a minimal environment without the user's shell PATH, so uv
+    installed in ~/.local/bin or ~/.cargo/bin won't be found via bare "uv".
+    """
+    global UV
+    if UV is not None:
+        return UV
+
+    home = Path.home()
+    candidates = [
+        "uv",  # on PATH
+        str(home / ".local" / "bin" / "uv"),
+        str(home / ".cargo" / "bin" / "uv"),
+        "/usr/local/bin/uv",
+        "/opt/homebrew/bin/uv",
+    ]
+    for candidate in candidates:
+        try:
+            subprocess.run([candidate, "--version"], check=True, capture_output=True)
+            UV = candidate
+            return UV
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+    return None
 
 def setup_venv():
     """Set up venv with uv on first run."""
@@ -25,21 +54,20 @@ def setup_venv():
     print("Setting up environment (first run)...")
 
     # Check if uv is available
-    try:
-        subprocess.run(["uv", "--version"], check=True, capture_output=True)
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    uv = find_uv()
+    if not uv:
         print("Error: 'uv' is not installed. Install it with:")
         print("  curl -LsSf https://astral.sh/uv/install.sh | sh")
         return False
 
     # Create venv
     print("Creating virtual environment...")
-    subprocess.run(["uv", "venv", str(VENV_DIR)], check=True, cwd=APP_DIR)
+    subprocess.run([uv, "venv", str(VENV_DIR)], check=True, cwd=APP_DIR)
 
     # Install dependencies
     print("Installing dependencies...")
     subprocess.run(
-        ["uv", "pip", "install", "rumps", "pyobjc-framework-Cocoa", "Pillow"],
+        [uv, "pip", "install", "rumps", "pyobjc-framework-Cocoa", "Pillow"],
         check=True,
         cwd=APP_DIR,
         env={**os.environ, "VIRTUAL_ENV": str(VENV_DIR)}
@@ -74,7 +102,7 @@ try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:
     subprocess.run(
-        ["uv", "pip", "install", "Pillow"],
+        [find_uv() or "uv", "pip", "install", "Pillow"],
         check=True, cwd=APP_DIR,
         env={**os.environ, "VIRTUAL_ENV": str(VENV_DIR)}
     )

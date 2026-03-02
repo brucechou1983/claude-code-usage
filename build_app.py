@@ -121,16 +121,24 @@ MAIN_SCRIPT="$APP_DIR/usage_inspector.py"
 
 # First run: setup venv with uv
 if [ ! -f "$PYTHON" ]; then
-    # Check for uv
-    if ! command -v uv &> /dev/null; then
+    # Find uv in common locations (PATH is minimal when launched from Finder)
+    UV=""
+    for candidate in uv "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv" /usr/local/bin/uv /opt/homebrew/bin/uv; do
+        if "$candidate" --version &> /dev/null 2>&1; then
+            UV="$candidate"
+            break
+        fi
+    done
+
+    if [ -z "$UV" ]; then
         osascript -e 'display dialog "uv is not installed.\\n\\nInstall it with:\\ncurl -LsSf https://astral.sh/uv/install.sh | sh" buttons {{"OK"}} default button "OK" with icon stop with title "Usage Inspector"'
         exit 1
     fi
 
     # Create venv
     cd "$APP_DIR"
-    uv venv "$VENV_DIR"
-    VIRTUAL_ENV="$VENV_DIR" uv pip install rumps pyobjc-framework-Cocoa Pillow
+    "$UV" venv "$VENV_DIR"
+    VIRTUAL_ENV="$VENV_DIR" "$UV" pip install rumps pyobjc-framework-Cocoa Pillow
 fi
 
 # Run the app
