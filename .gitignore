@@ -5,3 +5,5 @@ config.json
 *.app/
 *.zip
 .DS_Store
+.run.log
+.setup.log
