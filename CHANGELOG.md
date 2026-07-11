@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.3.0 (2026-07-11)
+
+### Added
+
+- **Multiple accounts** - Monitor several Claude Code accounts at once, each with its own title and OAuth token
+- **Primary account selection** - Pick which account's status is shown in the menu bar; switch anytime from the menu
+- **Manage Accounts menu** - Add, edit, and remove accounts without leaving the menu bar
+
+### Changed
+
+- **Settings dialog** - Now only configures the global refresh interval; account tokens moved to Manage Accounts
+
 ## v0.1.2 (2026-02-03)
 
 ### Added
