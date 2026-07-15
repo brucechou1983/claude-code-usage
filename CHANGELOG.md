@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.1 (2026-07-16)
+
+### Fixed
+
+- **System-wide freeze on launch** - Usage data was fetched on background threads that then mutated the menu-bar status item, its icon, and menu items directly. AppKit is not thread-safe; doing this could wedge the shared WindowServer and freeze keyboard/mouse input across all apps (only a reboot recovered), and the app never appeared in Force Quit. All UI updates are now marshalled onto the main thread via `PyObjCTools.AppHelper.callAfter`.
+- **Main-thread network stall** - The refresh timer ran its (up to 30s) network requests on the main thread, blocking the run loop. Refreshes now always run on a background worker.
+
 ## v0.3.0 (2026-07-11)
 
 ### Added

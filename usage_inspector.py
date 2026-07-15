@@ -93,12 +93,13 @@ import math
 import tempfile
 import uuid
 from datetime import datetime, timedelta
-from threading import Thread, Lock
+from threading import Thread, Lock, current_thread, main_thread
 from AppKit import (
     NSAlert, NSTextField, NSSecureTextField, NSView,
     NSMakeRect, NSAlertFirstButtonReturn, NSFont,
     NSImage as _NSImage,
 )
+from PyObjCTools import AppHelper
 try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:
@@ -390,6 +391,39 @@ class UsageInspectorApp(rumps.App):
             return "Weekly (7d): --"
         return f"Weekly (7d): {int(acc.weekly_util * 100)}%"
 
+    # -- Main-thread marshalling ---------------------------------------------
+
+    def _run_on_main(self, fn, *args):
+        """Run a UI update on the main thread.
+
+        AppKit (the status item, its button, and menu items) is NOT
+        thread-safe. Mutating it from a background fetch thread can corrupt
+        the app's WindowServer connection and freeze keyboard/mouse input
+        system-wide (only a reboot recovers). Network I/O stays on the
+        background thread; every UI touch is funnelled through here.
+        """
+        if current_thread() is main_thread():
+            fn(*args)
+        else:
+            AppHelper.callAfter(fn, *args)
+
+    def _set_title_glyph(self, glyph):
+        """MAIN THREAD ONLY. Show a transient status glyph in the menu bar."""
+        self.icon = self._empty_icon
+        self.title = glyph
+
+    def _render_account(self, acc, glyph=None):
+        """MAIN THREAD ONLY. Refresh an account's submenu and, if it is the
+        primary account, the menu-bar icon."""
+        self._update_account_menu(acc)
+        if acc.id != self.primary_id:
+            return
+        if glyph:
+            self.icon = self._empty_icon
+            self.title = glyph
+        else:
+            self._apply_primary_icon()
+
     def _update_account_menu(self, acc):
         if acc.menu_top is None:
             return
@@ -602,7 +636,7 @@ class UsageInspectorApp(rumps.App):
         rumps.alert(
             title="Claude Code Usage Inspector",
             message=(
-                "Version 0.3.0\n\n"
+                "Version 0.3.1\n\n"
                 "Author: Bruce Chou (and Claude Code)\n"
                 "Email: brucechou1983@gmail.com\n"
                 "GitHub: github.com/brucechou1983\n\n"
@@ -688,6 +722,13 @@ class UsageInspectorApp(rumps.App):
         pass (each request can take up to 30s) can outlast a short refresh
         interval or a manual "Refresh Now" click.
         """
+        # The rumps.Timer fires this on the MAIN thread; the network requests
+        # below can each block for up to 30s. Never run them on the main
+        # thread (it would freeze the run loop) — offload to a worker.
+        if current_thread() is main_thread():
+            Thread(target=self.fetch_all_usage, daemon=True).start()
+            return
+
         if not self._fetch_lock.acquire(blocking=False):
             return
         try:
@@ -705,15 +746,11 @@ class UsageInspectorApp(rumps.App):
         """
         if not acc.token:
             acc.status = "Token not set"
-            self._update_account_menu(acc)
-            if acc.id == self.primary_id:
-                self.icon = self._empty_icon
-                self.title = "⚠️"
+            self._run_on_main(self._render_account, acc, "⚠️")
             return
 
         if acc.id == self.primary_id:
-            self.icon = self._empty_icon
-            self.title = "🔄"
+            self._run_on_main(self._set_title_glyph, "🔄")
 
         try:
             url = "https://api.anthropic.com/v1/messages"
@@ -752,27 +789,18 @@ class UsageInspectorApp(rumps.App):
                 next_update = now + timedelta(seconds=self.refresh_interval)
                 acc.next_update = next_update.strftime('%H:%M:%S')
 
-                self._update_account_menu(acc)
-
-                # Update menu-bar icon only if this is (still) the primary account
-                if acc.id == self.primary_id:
-                    self._update_battery_icon(session_util, weekly_util, session_reset, weekly_reset)
+                # All UI work (submenu + menu-bar battery icon) on main thread.
+                self._run_on_main(self._render_account, acc)
 
         except urllib.error.HTTPError as e:
             if e.code == 401:
                 acc.status = "Token expired"
             else:
                 acc.status = f"Error {e.code}"
-            self._update_account_menu(acc)
-            if acc.id == self.primary_id:
-                self.icon = self._empty_icon
-                self.title = "🔑" if e.code == 401 else "❌"
+            self._run_on_main(self._render_account, acc, "🔑" if e.code == 401 else "❌")
         except Exception as e:
             acc.status = str(e)[:30]
-            self._update_account_menu(acc)
-            if acc.id == self.primary_id:
-                self.icon = self._empty_icon
-                self.title = "❌"
+            self._run_on_main(self._render_account, acc, "❌")
 
     def format_reset(self, reset_value):
         """Format reset timestamp."""
